@@ -1,21 +1,40 @@
-ERROR="Lib not defined"
+ERROR="LIB not defined"
 
+GOSRC?=${HOME}/go/src
 PYTHON_VERSION?=3.8.1
-PYTHON?=~/.pyenv/versions/${PYTHON_VERSION}/bin/python
-DIR?=../proto-${LIB}
+SYS_PY?=${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python
+PYTHON?=.venv/bin/python
+2TO3?=.venv/bin/2to3
+DIR?=../${LIB}
 
 all:
 	make go LIB=data
 	make go LIB=schema
+	make gateway LIB=data
+	make gateway LIB=schema
 	make python LIB=data
 	make python LIB=schema
 
 go:
 ifdef LIB
 	protoc \
-	-I=${DIR}/proto \
-	--go_out=plugins=grpc:${DIR}/go \
-	${DIR}/proto/*.proto
+	-I=${DIR} \
+	--go_out=plugins=grpc:${DIR}.go \
+	${DIR}/*.proto
+else
+	echo ${ERROR}
+endif
+
+gateway:
+ifdef LIB
+	protoc \
+	-I=${HOME}/.protoc/include \
+	-I=${DIR} \
+	-I=${GOSRC} \
+    -I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	--go_out=plugins=grpc:${DIR}.gw \
+	--grpc-gateway_out=logtostderr=true:${DIR}.gw \
+	${DIR}/*.proto
 else
 	echo ${ERROR}
 endif
@@ -23,23 +42,32 @@ endif
 python:
 ifdef LIB
 	${PYTHON} -m grpc_tools.protoc \
-	-I=${DIR}/proto \
-	--python_out=${DIR}/python/phisuite/${LIB} \
-	--grpc_python_out=${DIR}/python/phisuite/${LIB} \
-	${DIR}/proto/*.proto
+	-I=${HOME}/.protoc/include \
+    -I=${DIR} \
+    -I=${GOSRC} \
+    -I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	--python_out=${DIR}.py/phisuite/${LIB} \
+	--grpc_python_out=${DIR}.py/phisuite/${LIB} \
+	${DIR}/*.proto && \
+	${2TO3} ${DIR}.py/phisuite/${LIB} -w -n
 else
 	echo ${ERROR}
 endif
 
 install:
-	go get -u github.com/golang/protobuf/protoc-gen-go
-	go get -u google.golang.org/grpc
-	${PYTHON} -m pip install grpcio grpcio-tools
+	go mod download
+	${SYS_PY} -m venv .venv && \
+	${PYTHON} -m pip install -r requirements.txt
 
 clean:
 ifdef LIB
-	rm ${DIR}/go/*.pb.go & \
-	rm ${DIR}/python/phisuite/${LIB}/*_pb2.py ${DIR}/python/phisuite/${LIB}/*_pb2_grpc.py
+	rm ${DIR}.go/*.pb.go & \
+	rm ${DIR}.gw/*.pb.go ${DIR}.gw/*.gw.go & \
+	rm ${DIR}.py/phisuite/${LIB}/*pb2*.py
 else
 	echo ${ERROR}
 endif
+
+reset:
+	make clean LIB=data
+	make clean LIB=schema
