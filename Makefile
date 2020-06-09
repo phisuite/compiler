@@ -18,8 +18,12 @@ all:
 go:
 ifdef LIB
 	protoc \
+	-I=${HOME}/.protoc/include \
 	-I=${DIR} \
+	-I=${GOSRC} \
+	-I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 	--go_out=plugins=grpc:${DIR}.go \
+	--go_opt=paths=source_relative \
 	${DIR}/*.proto
 else
 	echo ${ERROR}
@@ -31,9 +35,11 @@ ifdef LIB
 	-I=${HOME}/.protoc/include \
 	-I=${DIR} \
 	-I=${GOSRC} \
-    -I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	-I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 	--go_out=plugins=grpc:${DIR}.gw \
 	--grpc-gateway_out=logtostderr=true:${DIR}.gw \
+	--go_opt=paths=source_relative \
+	--grpc-gateway_opt=paths=source_relative \
 	${DIR}/*.proto
 else
 	echo ${ERROR}
@@ -43,9 +49,9 @@ python:
 ifdef LIB
 	${PYTHON} -m grpc_tools.protoc \
 	-I=${HOME}/.protoc/include \
-    -I=${DIR} \
-    -I=${GOSRC} \
-    -I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	-I=${DIR} \
+	-I=${GOSRC} \
+	-I=${GOSRC}/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 	--python_out=${DIR}.py/phisuite/${LIB} \
 	--grpc_python_out=${DIR}.py/phisuite/${LIB} \
 	${DIR}/*.proto && \
